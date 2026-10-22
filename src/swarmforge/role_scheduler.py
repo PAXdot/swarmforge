@@ -17,6 +17,16 @@ class RoleWindow:
     end_utc: datetime
 
 
+@dataclass
+class RoleAssignmentStats:
+    """Statistics about role assignments over the scheduler's lifetime."""
+
+    total_assignments: int = 0
+    current_role: Optional[str] = None
+    current_role_duration: float = 0.0
+    current_role_start: Optional[datetime] = None
+
+
 class RoleScheduler:
     """Assign roles based on time windows, with optional rotation."""
 
@@ -28,6 +38,7 @@ class RoleScheduler:
         self._windows = windows or []
         self._now_fn = now_fn
         self._current_role: Optional[str] = None
+        self._stats = RoleAssignmentStats()
 
     def add_window(self, role: str, start_utc: datetime, end_utc: datetime) -> None:
         """Add a role window. Windows must not overlap existing ones."""
@@ -44,8 +55,22 @@ class RoleScheduler:
         now = self._now_fn()
         for window in self._windows:
             if window.start_utc <= now < window.end_utc:
+                if window.role != self._current_role:
+                    self._stats.total_assignments += 1
+                    self._stats.current_role = window.role
+                    self._stats.current_role_start = now
+                    self._stats.current_role_duration = 0.0
+                else:
+                    if self._stats.current_role_start is not None:
+                        self._stats.current_role_duration = (
+                            now - self._stats.current_role_start
+                        ).total_seconds()
                 self._current_role = window.role
                 return window.role
+        if self._current_role is not None:
+            self._stats.current_role = None
+            self._stats.current_role_start = None
+            self._stats.current_role_duration = 0.0
         self._current_role = None
         return None
 
@@ -73,6 +98,20 @@ class RoleScheduler:
         if role != self._current_role:
             return role
         return role
+
+    def get_stats(self) -> RoleAssignmentStats:
+        """Return a snapshot of current role assignment statistics."""
+        now = self._now_fn()
+        if self._current_role is not None and self._stats.current_role_start is not None:
+            self._stats.current_role_duration = (
+                now - self._stats.current_role_start
+            ).total_seconds()
+        return RoleAssignmentStats(
+            total_assignments=self._stats.total_assignments,
+            current_role=self._stats.current_role,
+            current_role_duration=self._stats.current_role_duration,
+            current_role_start=self._stats.current_role_start,
+        )
 
 
 def parse_iso_utc(iso_string: str) -> datetime:
