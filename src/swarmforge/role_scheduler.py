@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Callable, Optional
+from typing import Callable, Iterator, Optional
 
 
 @dataclass(frozen=True)
@@ -118,6 +118,46 @@ class RoleScheduler:
             current_role_duration=self._stats.current_role_duration,
             current_role_start=self._stats.current_role_start,
         )
+
+    def swarm_metrics(self) -> dict[str, float]:
+        """Return swarm-level metrics for role distribution."""
+        now = self._now_fn()
+        active_roles = {
+            window.role
+            for window in self._windows
+            if window.start_utc <= now < window.end_utc
+        }
+        total_windows = max(len(self._windows), 1)
+        return {
+            "active_roles": float(len(active_roles)),
+            "total_windows": float(len(self._windows)),
+            "active_ratio": len(active_roles) / total_windows,
+            "role_transitions": float(self._stats.total_assignments),
+        }
+
+
+def backoff_sequence(
+    base_delay: float = 1.0,
+    max_delay: float = 60.0,
+    factor: float = 2.0,
+    max_attempts: Optional[int] = None,
+) -> Iterator[float]:
+    """Yield backoff delays (seconds) for retry policies with exponential growth."""
+    if base_delay <= 0:
+        raise ValueError("base_delay must be positive")
+    if max_delay < base_delay:
+        raise ValueError("max_delay must be >= base_delay")
+    if factor <= 1.0:
+        raise ValueError("factor must be > 1.0")
+    if max_attempts is not None and max_attempts < 1:
+        raise ValueError("max_attempts must be >= 1")
+
+    delay = base_delay
+    attempt = 0
+    while max_attempts is None or attempt < max_attempts:
+        yield min(delay, max_delay)
+        delay *= factor
+        attempt += 1
 
 
 def parse_iso_utc(iso_string: str) -> datetime:
