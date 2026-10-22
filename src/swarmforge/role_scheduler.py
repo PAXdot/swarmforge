@@ -53,24 +53,30 @@ class RoleScheduler:
     def active_role(self) -> Optional[str]:
         """Return the role active at the current simulated time."""
         now = self._now_fn()
+        # Before checking windows, capture elapsed duration of the current role
+        if self._current_role is not None and self._stats.current_role_start is not None:
+            self._stats.current_role_duration = (
+                now - self._stats.current_role_start
+            ).total_seconds()
+
         for window in self._windows:
             if window.start_utc <= now < window.end_utc:
                 if window.role != self._current_role:
+                    # Transitioning to a new role: stats already hold the previous role's duration
                     self._stats.total_assignments += 1
                     self._stats.current_role = window.role
                     self._stats.current_role_start = now
                     self._stats.current_role_duration = 0.0
-                else:
-                    if self._stats.current_role_start is not None:
-                        self._stats.current_role_duration = (
-                            now - self._stats.current_role_start
-                        ).total_seconds()
                 self._current_role = window.role
                 return window.role
+
+        # No active window found; preserve duration stats before clearing
         if self._current_role is not None:
-            self._stats.current_role = None
-            self._stats.current_role_start = None
-            self._stats.current_role_duration = 0.0
+            # Keep the final duration in self._stats.current_role_duration
+            # before clearing the role
+            pass
+        self._stats.current_role = None
+        self._stats.current_role_start = None
         self._current_role = None
         return None
 
