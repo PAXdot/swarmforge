@@ -12,16 +12,17 @@ class BackoffStrategy:
         self.retries = 0
 
     def __call__(self, func: Callable, *args: Any, **kwargs: Any) -> Any:
-        while self.retries < self.max_retries:
+        for attempt in range(1, self.max_retries + 1):
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                sleep(self._calculate_delay(self.retries))
-                self.retries += 1
-        raise RuntimeError(f"Max retries exceeded with url '{args[1]}': {e}")
+                delay = self._calculate_delay(attempt)
+                print(f"Retry {attempt} after {delay:.2f} seconds due to: {e}")
+                sleep(delay)
+        raise RuntimeError(f"Failed after {self.max_retries} retries with: {args[1] if len(args) > 1 else ''}: {e}")
 
     def _calculate_delay(self, retry: int) -> float:
-        base_delay = self.initial * (self.multiplier ** retry)
+        base_delay = self.initial * (self.multiplier ** (retry - 1))
         return base_delay + (base_delay * self.jitter * (2 * retry - 1))
 
     def reset(self) -> None:
