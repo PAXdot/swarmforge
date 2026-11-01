@@ -1,17 +1,18 @@
 """Format consensus results into a consistent string representation.
 
-Supports nested dictionaries, lists, and primitive types recursively.
+Supports nested dictionaries, lists, None, and primitive types recursively.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
-
-def _format_value(value: Any, indent: int = 0) -> str:
-    """Recursively format a value, handling nested dicts, lists, and primitives."""
+def _format_value(value: Optional[Any], indent: int = 0) -> str:
+    """Recursively format a value, handling nested dicts, lists, None, and primitives."""
     prefix = " " * indent
-    if isinstance(value, dict):
+    if value is None:
+        return f"{prefix}- None"
+    elif isinstance(value, dict):
         items = []
         for key, val in value.items():
             formatted_val = _format_value(val, indent + 2)
@@ -26,12 +27,12 @@ def _format_value(value: Any, indent: int = 0) -> str:
     else:
         return str(value)
 
-
-def format_consensus(consensus: list[dict[str, Any]]) -> str:
+def format_consensus(consensus: list[dict[str, Optional[Any]]]) -> str:
     """Format a list of consensus entries into a human-readable string.
 
     Args:
         consensus: A list of dictionaries, each representing a consensus result.
+            Can contain None values.
 
     Returns:
         A formatted string representation.
