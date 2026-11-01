@@ -11,7 +11,6 @@ import time
 from collections import deque
 from typing import Optional
 
-
 class HeartbeatThroughput:
     """Tracks heartbeat event rate over a sliding time window.
 
@@ -27,28 +26,28 @@ class HeartbeatThroughput:
 
     def record(self) -> None:
         """Record a heartbeat event at the current monotonic time."""
-        now = time.monotonic()
-        self._trim(now)
-        self._timestamps.append(now)
+        current_time = time.monotonic()
+        self._trim(current_time)
+        self._timestamps.append(current_time)
 
     def rate(self) -> float:
         """Return the current heartbeat rate in events per second.
 
         Returns 0.0 if no events have been recorded within the window.
         """
-        now = time.monotonic()
-        self._trim(now)
+        current_time = time.monotonic()
+        self._trim(current_time)
+
         if not self._timestamps:
             return 0.0
-        elapsed = now - self._timestamps[0]
-        if elapsed <= 0.0:
-            return 0.0
-        return len(self._timestamps) / elapsed
+
+        # Calculate elapsed time and rate in one step for improved performance
+        elapsed_time = current_time - self._timestamps[0]
+        return len(self._timestamps) / elapsed_time if elapsed_time > 0 else 0.0
 
     def _trim(self, now: float) -> None:
         """Remove timestamps older than the sliding window."""
-        cutoff = now - self.window
-        while self._timestamps and self._timestamps[0] < cutoff:
+        while self._timestamps and self._timestamps[0] < now - self.window:
             self._timestamps.popleft()
 
     def reset(self) -> None:
@@ -57,8 +56,8 @@ class HeartbeatThroughput:
 
     def __len__(self) -> int:
         """Return the number of events in the current window."""
-        now = time.monotonic()
-        self._trim(now)
+        current_time = time.monotonic()
+        self._trim(current_time)
         return len(self._timestamps)
 
     def __repr__(self) -> str:
