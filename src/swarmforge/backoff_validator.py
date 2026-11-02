@@ -1,57 +1,64 @@
-# src/swarmforge/role_scheduler.py
+# src/swarmforge/backoff_validator.py
 
-from time import sleep
-from swarmforge.backoff_validator import validate_backoff_policy
-from swarmforge.exceptions import RoleAssignmentFailedError, AgentUnavailableError
+import time
+from typing import Dict, Union
 
-class RoleScheduler:
-    def __init__(self, policy: dict, max_retries: int = 5):
-        """Initialize RoleScheduler with backoff policy and max retries.
+class BackoffPolicyValidationError(Exception):
+    pass
 
-        Args:
-            policy (dict): A dictionary representing the backoff policy.
-            max_retries (int): Maximum number of retry attempts. Defaults to 5.
-        """
-        validate_backoff_policy(policy)
-        self.policy = policy
-        self.current_retry = 0
-        self.max_retries = max_retries
+def validate_backoff_policy(policy: Dict) -> None:
+    """Validate the backoff policy format.
 
-    def assign_role(self, agent: str, role: str) -> None:
-        """Assign a role to an agent with retry mechanism.
+    Args:
+        policy (Dict): A dictionary representing the backoff policy.
 
-        Args:
-            agent (str): The name or ID of the agent.
-            role (str): The role to assign to the agent.
+    Raises:
+        BackoffPolicyValidationError: If the policy format is invalid.
+    """
+    if not isinstance(policy, dict) or 'base' not in policy or 'factor' not in policy:
+        raise BackoffPolicyValidationError("Invalid backoff policy format. Expected {'base': <int>, 'factor': <float>}")
 
-        Raises:
-            RoleAssignmentFailedError: If assignment fails after max retries.
-            AgentUnavailableError: If the agent is not available.
-        """
-        while self.current_retry < self.max_retries:
-            try:
-                # Attempt to assign role to agent
-                # ...
+def calculate_backoff(current_retry: int, policy: Dict) -> Union[float, None]:
+    """Calculate the backoff duration based on the current retry count and policy.
 
-                # If role assignment succeeds, reset retry count
-                self.current_retry = 0
-                return
-            except AgentUnavailableError:
-                # If agent is unavailable, increment retry count and wait
-                self.current_retry += 1
-                sleep(self._calculate_backoff())
-            except Exception as e:
-                # If any other exception occurs, increment retry count and wait
-                self.current_retry += 1
-                sleep(self._calculate_backoff())
-        raise RoleAssignmentFailedError(f"Role assignment failed after {self.max_retries} retries")
+    Args:
+        current_retry (int): The current retry count.
+        policy (Dict): The backoff policy.
 
-    def _calculate_backoff(self) -> float:
-        """Calculate the backoff duration based on the current retry count.
+    Returns:
+        Union[float, None]: The duration to wait before retrying, in seconds. Returns None if policy is invalid.
+    """
+    validate_backoff_policy(policy)
 
-        Returns:
-            float: The duration to wait before retrying, in seconds.
-        """
-        # Implement exponential backoff calculation here
-        # ...
+    base = policy.get('base', 1)
+    factor = policy.get('factor', 1.0)
+
+    if current_retry == 0:
+        return base
+
+    return base * (factor ** current_retry)
+
+# tests/test_backoff_validator.py
+
+def test_calculate_backoff_valid_policy():
+    policy = {'base': 1, 'factor': 2.0}
+    assert calculate_backoff(0, policy) == 1
+    assert calculate_backoff(1, policy) == 2
+    assert calculate_backoff(2, policy) == 4
+
+def test_calculate_backoff_invalid_policy():
+    assert calculate_backoff(0, {}) is None
+    assert calculate_backoff(0, {'base': 1}) is None
+    assert calculate_backoff(0, {'factor': 2.0}) is None
+
+def test_calculate_backoff_agent_not_in_heartbeats():
+    policy = {'base': 1, 'factor': 2.0}
+    agent = 'agent1'
+    heartbeats = {'agent2', 'agent3'}
+
+    try:
+        calculate_backoff(0, policy)
+    except AgentUnavailableError:
         pass
+    else:
+        assert False, "Expected AgentUnavailableError"
