@@ -3,18 +3,20 @@
 import time
 from typing import Any
 
-
 def create_envelope(sender: str, topic: str, payload: Any) -> dict[str, Any]:
     """Build a standard message envelope with sender, topic, payload and timestamp."""
     if not validate_topic(topic):
         raise ValueError(f"Invalid topic: {topic!r}")
-    return {
-        "sender": sender,
-        "topic": topic,
-        "payload": payload,
-        "timestamp": time.time(),
-    }
-
+    try:
+        return {
+            "sender": sender,
+            "topic": topic,
+            "payload": payload,
+            "timestamp": time.time(),
+        }
+    except Exception as e:
+        # Handle any other unexpected exceptions
+        raise RuntimeError(f"Failed to create envelope: {e}")
 
 def validate_topic(topic: str) -> bool:
     """Return True if topic is a non-empty string of alphanumerics separated by dots."""
