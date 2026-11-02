@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Sequence
 
+from swarmforge.consensus_formatter_base import format_decision, format_consensus_summary, format_full_report, format_backoff_policy
 
 class ConsensusFormatter:
     """Produces human-readable strings from consensus data structures.
@@ -13,38 +14,6 @@ class ConsensusFormatter:
     - Consensus result: {"proposal": str, "outcome": str, "vote_counts": {"for": int, "against": int, "abstain": int}, "total_agents": int}
     - Agent state: {"role": str, "active": bool}
     """
-
-    @staticmethod
-    def format_decision(decision: Dict[str, object]) -> str:
-        """Format a single agent's decision into a line of text."""
-        agent_id = str(decision.get("agent_id", "unknown"))
-        vote = decision.get("vote")
-        confidence = float(decision.get("confidence", 0.0))
-        vote_str = "FOR" if vote is True else "AGAINST" if vote is False else "ABSTAIN"
-        return f"  {agent_id}: {vote_str} ({confidence:.1%})"
-
-    @staticmethod
-    def format_consensus_summary(result: Dict[str, object]) -> str:
-        """Format the final consensus result into a block of text."""
-        proposal = str(result.get("proposal", "?"))
-        outcome = str(result.get("outcome", "undecided"))
-        counts = result.get("vote_counts", {})
-        total = int(result.get("total_agents", 0))
-        for_count, against_count, abstain_count = map(int, (counts.get(k, 0) for k in ("for", "against", "abstain")))
-        return f"=== Consensus Decision: '{proposal}' ===\nOutcome: {outcome.upper()}\nVotes: {for_count} for, {against_count} against, {abstain_count} abstain\nTotal agents: {total}"
-
-    @staticmethod
-    def format_full_report(decisions: Sequence[Dict[str, object]], result: Dict[str, object]) -> str:
-        """Format a full report including all individual decisions and the summary."""
-        parts = ["=== Individual Agent Decisions ==="] + [ConsensusFormatter.format_decision(d) for d in decisions] + ["", ConsensusFormatter.format_consensus_summary(result)]
-        return "\n".join(parts)
-
-    @staticmethod
-    def format_backoff_policy(backoff: Dict[str, object]) -> str:
-        """Format backoff policy data into a line of text. Expected format: {"type": str, "params": dict}"""
-        backoff_type = str(backoff.get("type", "unknown"))
-        params = ", ".join(f"{k}={v}" for k, v in backoff.get("params", {}).items())
-        return f"Backoff policy: {backoff_type} ({params})"
 
     @staticmethod
     def swarm_metrics(agents: Sequence[Dict[str, object]]) -> str:
