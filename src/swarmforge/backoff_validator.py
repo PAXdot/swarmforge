@@ -1,6 +1,6 @@
 # src/swarmforge/backoff_validator.py
 
-from typing import Dict, Any, NoReturn
+from typing import Dict, Any, NoReturn, ItemsView
 from swarmforge.exceptions import InvalidBackoffPolicyError, InvalidSwarmMetricsError
 
 def validate_backoff_policy(policy: Dict[str, Any]) -> None:
@@ -28,3 +28,7 @@ def validate_swarm_metrics(metrics: Dict[str, Any]) -> None:
         raise InvalidSwarmMetricsError("Swarm metrics keys must be strings")
     if not all(isinstance(v, (int, float, str)) for v in metrics.values()):
         raise InvalidSwarmMetricsError("Swarm metrics values must be numbers or strings")
+
+def policy_items(policy: Dict[str, Any]) -> ItemsView[str, Any]:
+    """Return an iterator over the backoff policy's items."""
+    return policy.items()
