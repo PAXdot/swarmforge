@@ -5,7 +5,7 @@ Supports nested dictionaries, lists, None, and primitive types recursively.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 def _format_value(value: Optional[Any], indent: int = 0) -> str:
     """Recursively format a value, handling nested dicts, lists, None, and primitives."""
@@ -27,7 +27,7 @@ def _format_value(value: Optional[Any], indent: int = 0) -> str:
     else:
         return str(value)
 
-def format_consensus(consensus: list[dict[str, Optional[Any]]]) -> str:
+def format_consensus(consensus: List[Optional[dict[str, Any]]]) -> str:
     """Format a list of consensus entries into a human-readable string.
 
     Args:
@@ -42,6 +42,7 @@ def format_consensus(consensus: list[dict[str, Optional[Any]]]) -> str:
 
     lines: list[str] = []
     for i, entry in enumerate(consensus):
-        lines.append(f"Entry {i}:")
-        lines.append(_format_value(entry, indent=2))
+        if entry is not None:  # Skip None values
+            lines.append(f"Entry {i}:")
+            lines.append(_format_value(entry, indent=2))
     return "\n".join(lines)
