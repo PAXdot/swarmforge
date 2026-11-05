@@ -1,14 +1,14 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Union, Tuple
 
 @dataclass
 class ConsensusMetrics:
     total_messages: int = 0
     successful_consensus: int = 0
     failed_consensus: int = 0
-    consensus_attempts: List[int] = None
-    consensus_latency: List[float] = None
+    consensus_attempts: Union[List[int], None] = None
+    consensus_latency: Union[List[float], None] = None
 
     def __post_init__(self):
         if self.consensus_attempts is None:
