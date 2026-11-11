@@ -8,10 +8,11 @@ class BackoffValidator:
     def __init__(self):
         self.machine = Machine(
             model=self,
-            states=['initial', 'validating_policy', 'validating_metrics', 'valid'],
+            states=['initial', 'validating_policy', 'policy_invalid', 'validating_metrics', 'valid'],
             transitions=[
                 {'trigger': 'start_validation', 'source': 'initial', 'dest': 'validating_policy'},
                 {'trigger': 'policy_valid', 'source': 'validating_policy', 'dest': 'validating_metrics'},
+                {'trigger': 'policy_invalid', 'source': 'validating_policy', 'dest': 'policy_invalid'},
                 {'trigger': 'metrics_valid', 'source': 'validating_metrics', 'dest': 'valid'},
             ],
             initial='initial'
@@ -30,6 +31,8 @@ class BackoffValidator:
         if not all(isinstance(v, (int, float)) for v in policy.values()):
             raise InvalidBackoffPolicyError("Backoff policy values must be numbers")
 
+        if self.machine.state == 'policy_invalid':
+            self.machine.set_state('validating_policy')
         self.policy_valid()
 
     def validate_swarm_metrics(self, metrics: Dict[str, Any]) -> None:
@@ -49,7 +52,8 @@ class BackoffValidator:
 
     def policy_items(self) -> Iterator[ItemsView[str, Any]]:
         """Return an iterator over the backoff policy's items."""
-        self.machine.set_state('valid')
+        if self.machine.state != 'valid':
+            raise InvalidBackoffPolicyError("Policy items can only be accessed in the 'valid' state")
         return self.machine.model.policy.items()
 
 validator = BackoffValidator()
