@@ -1,5 +1,7 @@
 from time import sleep
 from typing import Callable, Any, Optional
+import json
+import pickle
 
 class BackoffStrategy:
     """Retry strategy with exponential backoff and jitter."""
@@ -27,3 +29,40 @@ class BackoffStrategy:
 
     def reset(self) -> None:
         self.retries = 0
+
+    def serialize(self, format: str = "json") -> str:
+        """Serialize the BackoffStrategy object to a string.
+
+        Args:
+            format (str, optional): The serialization format. Defaults to "json".
+
+        Returns:
+            str: The serialized object as a string.
+
+        Raises:
+            NotImplementedError: If the format is not supported.
+        """
+        if format.lower() == "json":
+            return json.dumps(self.__dict__)
+        elif format.lower() == "pickle":
+            return pickle.dumps(self)
+        else:
+            raise NotImplementedError(f"Format '{format}' is not supported.")
+
+    @classmethod
+    def deserialize(cls, data: str, format: str = "json") -> 'BackoffStrategy':
+        """Deserialize a BackoffStrategy object from a string.
+
+        Args:
+            data (str): The serialized object as a string.
+            format (str, optional): The serialization format. Defaults to "json".
+
+        Returns:
+            BackoffStrategy: The deserialized object.
+        """
+        if format.lower() == "json":
+            return cls(**json.loads(data))
+        elif format.lower() == "pickle":
+            return pickle.loads(data)
+        else:
+            raise NotImplementedError(f"Format '{format}' is not supported.")
